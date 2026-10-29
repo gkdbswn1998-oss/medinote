@@ -38,10 +38,11 @@ spring:
       host: ${REDIS_HOST:redis}
       port: ${REDIS_PORT:6379}
 
+  # 약사 면허증 이미지 업로드 허용 용량 (Nginx client_max_body_size와 동일하게 유지)
   servlet:
     multipart:
-      max-file-size: 10MB
-      max-request-size: 10MB
+      max-file-size: 15MB
+      max-request-size: 15MB
 
   cloud:
     aws:

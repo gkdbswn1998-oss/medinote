@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -86,6 +87,17 @@ public class ConsultationService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 방입니다"));
 
         session.matchPharmacist(pharmacistId);
+    }
+
+    //실시간 메시지 전송 시 상담방 참여자인지 검증
+    @Transactional(readOnly = true)
+    public void validateParticipant(Long roomId, Long userId) {
+        ConsultationSession session = consultationSessionRepository.findById(roomId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 방입니다"));
+
+        if (!session.isParticipant(userId)) {
+            throw new AccessDeniedException("참여 중인 상담방에만 메시지를 보낼 수 있습니다");
+        }
     }
 
     //메시지 전송 시 DB에 저장
@@ -203,13 +215,19 @@ public class ConsultationService {
 
     // 약사가 상담 중 환자 정보 조회
     @Transactional(readOnly = true)
-    public PatientInfoResponse getPatientInfoByRoomId(Long roomId, String role) {
+    public PatientInfoResponse getPatientInfoByRoomId(Long roomId, Long requesterId, String role) {
         if (!"PHARMACIST".equals(role) && !"ROLE_PHARMACIST".equals(role)) {
-            throw new IllegalArgumentException("약사만 환자 정보를 조회할 수 있습니다");
+            throw new AccessDeniedException("약사만 환자 정보를 조회할 수 있습니다");
         }
 
         ConsultationSession session = consultationSessionRepository.findById(roomId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 방입니다"));
+
+        //해당 상담방에 매칭된 담당 약사만 환자 의료 정보 열람 가능
+        if (!requesterId.equals(session.getPharmacistId())) {
+            log.warn("환자 정보 열람 거부 - 방번호: {}, 요청 약사ID: {}", roomId, requesterId);
+            throw new AccessDeniedException("담당 약사만 환자 정보를 조회할 수 있습니다");
+        }
 
         PatientInfoResponse patientInfo = authUserClient.getPatientInfo(session.getCustomerId());
 
