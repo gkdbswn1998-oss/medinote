@@ -70,6 +70,11 @@ public class ConsultationSession {
         this.status = SessionStatus.MATCHED;
     }
 
+    //상담방 참여자(신청한 유저 또는 매칭된 약사)인지 확인
+    public boolean isParticipant(Long userId){
+        return userId != null && (userId.equals(this.customerId) || userId.equals(this.pharmacistId));
+    }
+
     public void closeSession(){
         this.status = SessionStatus.CLOSED;
     }

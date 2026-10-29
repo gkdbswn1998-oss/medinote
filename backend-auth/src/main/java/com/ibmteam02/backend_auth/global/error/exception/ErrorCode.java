@@ -18,7 +18,11 @@ public enum ErrorCode {
     SIGNUP_FAILED(500, "U004", "회원가입 처리 중 오류가 발생했습니다"),
     IS_SOCIAL_USER(400, "U005", "소셜 로그인으로 가입된 계정입니다. 해당 소셜 로그인을 이용해주세요."),
     INVALID_PASSWORD(400, "U006", "비밀번호가 일치하지 않습니다."),
-    INVALID_VERIFICATION_CODE(400, "U007", "인증 번호가 일치하지 않거나 만료되었습니다.");
+    INVALID_VERIFICATION_CODE(400, "U007", "인증 번호가 일치하지 않거나 만료되었습니다."),
+
+    //파일 업로드 관련
+    FILE_SIZE_EXCEEDED(413, "F001", "업로드 가능한 파일 용량(15MB)을 초과했습니다."),
+    FILE_UPLOAD_FAILED(500, "F002", "파일 업로드 중 오류가 발생했습니다.");
 
     private final int status;
     private final String code;

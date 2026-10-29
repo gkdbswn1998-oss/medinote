@@ -9,6 +9,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -150,10 +151,13 @@ public class ConsultationController {
             @RequestHeader("Authorization") String bearerToken) {
         try {
             String token = bearerToken.substring(7);
+            Long userId = jwtProvider.getUserIdFromToken(token);
             String role = jwtProvider.getRoleFromToken(token);
 
-            PatientInfoResponse patientInfo = consultationService.getPatientInfoByRoomId(roomId, role);
+            PatientInfoResponse patientInfo = consultationService.getPatientInfoByRoomId(roomId, userId, role);
             return ResponseEntity.ok(patientInfo);
+        } catch (AccessDeniedException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }

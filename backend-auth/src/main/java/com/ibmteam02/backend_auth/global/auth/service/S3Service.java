@@ -1,6 +1,9 @@
 package com.ibmteam02.backend_auth.global.auth.service;
 
+import com.ibmteam02.backend_auth.global.error.exception.CustomException;
+import com.ibmteam02.backend_auth.global.error.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -9,6 +12,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
@@ -19,6 +23,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class S3Service {
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
@@ -34,6 +39,9 @@ public class S3Service {
         // S3 저장 경로 및 파일명 지정
         String s3FileName = "medication/images/" + UUID.randomUUID() + "-" + multipartFile.getOriginalFilename();
 
+        // 장애 추적용 로그 (파일명은 개인정보가 포함될 수 있어 남기지 않음)
+        log.info("S3 업로드 시작 - 크기: {} bytes, 타입: {}", multipartFile.getSize(), multipartFile.getContentType());
+
         try (InputStream inputStream = multipartFile.getInputStream()) {
 
             // AWS SDK v2 순정 업로드 요청 빌드
@@ -46,11 +54,14 @@ public class S3Service {
             // S3 버킷에 다이렉트로 파일 전송!
             s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(inputStream, multipartFile.getSize()));
 
+            log.info("S3 업로드 완료 - bucket: {}", bucket);
+
             // 생성된 경로(key) 반환
             return s3FileName;
 
-        } catch (IOException e) {
-            throw new RuntimeException("사진 업로드 에러", e);
+        } catch (IOException | S3Exception e) {
+            log.error("S3 업로드 실패 - 크기: {} bytes", multipartFile.getSize(), e);
+            throw new CustomException(ErrorCode.FILE_UPLOAD_FAILED);
         }
     }
 
@@ -80,8 +91,12 @@ public class S3Service {
                     .bucket(bucket)
                     .key(key)
                     .build();
+
+            // 요청 객체만 만들고 실제 삭제 호출이 빠져 있던 문제 수정
+            s3Client.deleteObject(deleteObjectRequest);
+            log.info("S3 이미지 삭제 완료 - key: {}", key);
         } catch (Exception e) {
-            System.err.println("S3 이미지 삭제 실패 (수동 삭제 필요): " + e.getMessage());
+            log.error("S3 이미지 삭제 실패 (수동 삭제 필요) - key: {}", key, e);
         }
 
     }
