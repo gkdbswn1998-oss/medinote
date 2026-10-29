@@ -14,25 +14,34 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(CustomException.class)
     protected ResponseEntity<ErrorResponse> handleCustomException(CustomException e){
-        ErrorCode errorCode = e.getErrorCode();
-        return ResponseEntity
-                .status(errorCode.getStatus())
-                .body(new ErrorResponse(errorCode.getStatus(), errorCode.getCode(), errorCode.getMessage()));
+        return toResponse(e.getErrorCode());
     }
 
     //업로드 용량 초과 시 500이 아닌 413으로 명확히 응답
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     protected ResponseEntity<ErrorResponse> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException e) {
-        ErrorCode errorCode = ErrorCode.FILE_SIZE_EXCEEDED;
-        return ResponseEntity
-                .status(errorCode.getStatus())
-                .body(new ErrorResponse(errorCode.getStatus(), errorCode.getCode(), errorCode.getMessage()));
+        return toResponse(ErrorCode.FILE_SIZE_EXCEEDED);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     protected ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException e) {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), "BAD_REQUEST", e.getMessage()));
+                .body(ErrorResponse.builder()
+                        .status(HttpStatus.BAD_REQUEST.value())
+                        .code("BAD_REQUEST")
+                        .message(e.getMessage())
+                        .build());
+    }
+
+    // 생성자 인자 순서(status, message, code)와 달라 code·message가 뒤바뀌던 문제를 막기 위해 필드명으로 지정
+    private ResponseEntity<ErrorResponse> toResponse(ErrorCode errorCode) {
+        return ResponseEntity
+                .status(errorCode.getStatus())
+                .body(ErrorResponse.builder()
+                        .status(errorCode.getStatus())
+                        .code(errorCode.getCode())
+                        .message(errorCode.getMessage())
+                        .build());
     }
 }
